@@ -9,6 +9,7 @@ struct App
 {
     SDL_Window* window;
     SDL_Renderer* renderer;
+    SDL_GLContext glContext;
 };
 
 #endif //PLUA_TYPES_H
