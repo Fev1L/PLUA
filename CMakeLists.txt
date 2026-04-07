@@ -28,8 +28,7 @@ target_link_libraries(imgui_lib PUBLIC
 )
 
 add_executable(PLUA MACOSX_BUNDLE
-    main.cpp
-        types.h
+        src/main.cpp
 )
 
 target_link_libraries(PLUA PRIVATE
