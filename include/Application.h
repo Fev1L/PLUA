@@ -10,6 +10,7 @@
 #include "Database.h"
 #include "ChatUI.h"
 
+
 class Application
 {
 public:
@@ -22,6 +23,7 @@ private:
     ChatUI m_ChatUI;
     Database m_Database;
     ModelRunner m_ModelRunner;
+    bool m_IsRunning = true;
 };
 
 #endif //PLUA_APPLICATION_H

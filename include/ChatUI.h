@@ -8,6 +8,7 @@
 #include "string"
 #include "vector"
 #include "Message.h"
+#include <imgui.h>
 
 class ChatUI
 {
@@ -19,8 +20,13 @@ public:
 
     void AddMessage(const Message& message);
 
+    void SetGenerating(bool generating);
+
 private:
     std::vector<Message> m_Messages;
+    char m_InputBuffer[256] = "";
+    std::string m_PendingMessage;
+    bool m_IsGenerating = false;
 };
 
 #endif //PLUA_CHATUI_H
