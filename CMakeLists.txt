@@ -1,3 +1,8 @@
+set(CMAKE_C_COMPILER /usr/bin/clang)
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+set(CMAKE_OBJC_COMPILER /usr/bin/clang)
+enable_language(OBJC)
+
 cmake_minimum_required(VERSION 3.23)
 
 project(PLUA)
@@ -35,19 +40,18 @@ add_library(sqlite3 third_party/sqlite/sqlite3.c)
 
 target_include_directories(sqlite3 PUBLIC third_party/sqlite)
 
-#==============================================
+# =============== LLAMA.CPP CONNECT ===============
+
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(third_party/llama.cpp)
+
+# ===============================================
 
 add_executable(PLUA MACOSX_BUNDLE
         src/main.cpp
-        src/Application.cpp
-        src/Window.cpp
-        src/ChatUI.cpp
-        src/Database.cpp
-        src/ModelRunner.cpp
-        src/CharacterProfile.cpp
-        src/PromptBuilder.cpp
-        src/MemoryManager.cpp
-        src/SessionManager.cpp
 )
 
 target_link_libraries(PLUA PRIVATE
@@ -55,8 +59,10 @@ target_link_libraries(PLUA PRIVATE
         imgui_lib
         OpenGL::GL
         sqlite3
+        llama
 )
 
 target_include_directories(PLUA PRIVATE
         third_party/json
+        third_party/llama.cpp/include
 )
