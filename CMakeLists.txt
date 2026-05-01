@@ -52,6 +52,8 @@ add_subdirectory(third_party/llama.cpp)
 
 add_executable(PLUA MACOSX_BUNDLE
         src/main.cpp
+        src/llama_backend.cpp
+        src/ui.cpp
 )
 
 target_link_libraries(PLUA PRIVATE
