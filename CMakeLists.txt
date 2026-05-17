@@ -5,6 +5,9 @@ enable_language(OBJC)
 
 cmake_minimum_required(VERSION 3.23)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 project(PLUA)
 
 include(cmake/Dependencies.cmake)
@@ -54,6 +57,8 @@ add_executable(PLUA MACOSX_BUNDLE
         src/main.cpp
         src/llama_backend.cpp
         src/ui.cpp
+        src/chat_history.cpp
+        src/load_config.cpp
 )
 
 target_link_libraries(PLUA PRIVATE

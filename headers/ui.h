@@ -8,9 +8,13 @@
 #pragma once
 #include <string>
 #include "chat_history.h"
+#include "config_loader.h"
+
+void ApplyTheme(const std::string& theme);
 
 bool DrawUI(int window_w, int window_h,
             const ChatHistory& history,
+            const CharacterConfig& character,
             std::string& prompt_out);
 
 #endif //PLUA_UI_H

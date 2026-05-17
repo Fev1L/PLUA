@@ -5,6 +5,10 @@
 #include "../headers/llama_backend.h"
 #include "llama.h"
 #include <vector>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 
 static llama_model*   model = nullptr;
 static llama_context* ctx   = nullptr;
@@ -20,12 +24,45 @@ static void llama_batch_add(llama_batch& batch, llama_token id, llama_pos pos,
     batch.n_tokens++;
 }
 
-static std::string BuildPrompt(const ChatHistory& history) {
-    std::string prompt = "<|begin_of_text|>";
+static std::string GetCurrentDateTime() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&t);
+
+    std::ostringstream ss;
+    ss << std::put_time(&tm, "%A, %d %B %Y, %H:%M");
+    return ss.str();
+}
+
+static std::string BuildPrompt(const ChatHistory& history, const CharacterConfig& character) {
+    std::string datetime = GetCurrentDateTime();
+
+    std::string system_prompt =
+        "Your name is " + character.name + ". "
+        "Your tone is " + character.tone + " and your style is " + character.style + ". "
+        + character.description + " ";
+
+    if (!character.behavior_rules.empty()) {
+        system_prompt += "Follow these rules strictly: ";
+        for (size_t i = 0; i < character.behavior_rules.size(); ++i) {
+            system_prompt += std::to_string(i + 1) + ") "
+                          + character.behavior_rules[i] + ". ";
+        }
+    }
+
+    system_prompt += "Current date and time: " + datetime + ".";
+
+    std::string prompt =
+        "<|begin_of_text|>"
+        "<|start_header_id|>system<|end_header_id|>\n\n"
+        + system_prompt +
+        "<|eot_id|>";
+
     for (const auto& msg : history) {
         prompt += "<|start_header_id|>" + msg.role + "<|end_header_id|>\n\n";
         prompt += msg.content + "<|eot_id|>";
     }
+
     prompt += "<|start_header_id|>assistant<|end_header_id|>\n\n";
     return prompt;
 }
@@ -43,7 +80,7 @@ bool InitLlama() {
     return ctx != nullptr;
 }
 
-void RunLlama(ChatHistory& history) {
+void RunLlama(ChatHistory& history, const CharacterConfig& character) {
     if (!model || history.empty()) return;
     if (ctx) llama_free(ctx);
 
@@ -51,7 +88,7 @@ void RunLlama(ChatHistory& history) {
     cparams.n_ctx = 4096;
     ctx = llama_init_from_model(model, cparams);
 
-    std::string formatted_prompt = BuildPrompt(history);
+    std::string formatted_prompt = BuildPrompt(history, character);
 
     const llama_vocab* vocab = llama_model_get_vocab(model);
     std::vector<llama_token> tokens(formatted_prompt.size() + 64);
