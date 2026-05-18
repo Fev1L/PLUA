@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue?style=flat-square"/>
     <img src="https://img.shields.io/badge/built%20with-C%2B%2B17-yellow?style=flat-square"/>
     <img src="https://img.shields.io/badge/AI-llama.cpp-red?style=flat-square"/>
-    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"/>
+    <img src="https://img.shields.io/badge/license-GPL-blue?style=flat-square"/>
   </p>
 </div>
 
