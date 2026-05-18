@@ -11,6 +11,7 @@
 #include "config_loader.h"
 
 void ApplyTheme(const std::string& theme);
+void LoadAppFont(float size = 17.0f);
 
 bool DrawUI(int window_w, int window_h,
             const ChatHistory& history,

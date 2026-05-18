@@ -34,33 +34,35 @@ static std::string GetCurrentDateTime() {
     return ss.str();
 }
 
-static std::string BuildPrompt(const ChatHistory& history, const CharacterConfig& character) {
+static std::string BuildPrompt(const ChatHistory& history,
+                                const CharacterConfig& character) {
     std::string datetime = GetCurrentDateTime();
 
     std::string system_prompt =
         "Your name is " + character.name + ". "
-        "Your tone is " + character.tone + " and your style is " + character.style + ". "
-        + character.description + " ";
+        "Your tone is " + character.tone + " and your style is "
+        + character.style + ". " + character.description + " ";
 
     if (!character.behavior_rules.empty()) {
         system_prompt += "Follow these rules strictly: ";
-        for (size_t i = 0; i < character.behavior_rules.size(); ++i) {
-            system_prompt += std::to_string(i + 1) + ") "
-                          + character.behavior_rules[i] + ". ";
-        }
+        for (size_t i = 0; i < character.behavior_rules.size(); ++i)
+            system_prompt += std::to_string(i+1) + ") "
+                           + character.behavior_rules[i] + ". ";
     }
-
     system_prompt += "Current date and time: " + datetime + ".";
 
     std::string prompt =
-        "<|begin_of_text|>"
         "<|start_header_id|>system<|end_header_id|>\n\n"
-        + system_prompt +
-        "<|eot_id|>";
+        + system_prompt + "<|eot_id|>";
 
-    for (const auto& msg : history) {
-        prompt += "<|start_header_id|>" + msg.role + "<|end_header_id|>\n\n";
-        prompt += msg.content + "<|eot_id|>";
+    const size_t MAX_MESSAGES = 40;
+    size_t start_idx = history.size() > MAX_MESSAGES
+                     ? history.size() - MAX_MESSAGES : 0;
+
+    for (size_t i = start_idx; i < history.size(); ++i) {
+        prompt += "<|start_header_id|>" + history[i].role
+               + "<|end_header_id|>\n\n";
+        prompt += history[i].content + "<|eot_id|>";
     }
 
     prompt += "<|start_header_id|>assistant<|end_header_id|>\n\n";
@@ -70,12 +72,13 @@ static std::string BuildPrompt(const ChatHistory& history, const CharacterConfig
 bool InitLlama() {
     llama_backend_init();
     llama_model_params mparams = llama_model_default_params();
-    model = llama_model_load_from_file(
-        "/Users/fesedevladicah/Documents/PLUA/third_party/llama.cpp/models/Llama3.gguf", mparams);
+    std::string model_file = ModelPath("Llama3.gguf");
+    model = llama_model_load_from_file(model_file.c_str(), mparams);
     if (!model) return false;
 
     llama_context_params cparams = llama_context_default_params();
     cparams.n_ctx = 4096;
+    cparams.n_batch = 4096;
     ctx = llama_init_from_model(model, cparams);
     return ctx != nullptr;
 }
@@ -86,6 +89,7 @@ void RunLlama(ChatHistory& history, const CharacterConfig& character) {
 
     llama_context_params cparams = llama_context_default_params();
     cparams.n_ctx = 4096;
+    cparams.n_batch = 4096;
     ctx = llama_init_from_model(model, cparams);
 
     std::string formatted_prompt = BuildPrompt(history, character);
@@ -93,11 +97,19 @@ void RunLlama(ChatHistory& history, const CharacterConfig& character) {
     const llama_vocab* vocab = llama_model_get_vocab(model);
     std::vector<llama_token> tokens(formatted_prompt.size() + 64);
     int n_tokens = llama_tokenize(vocab, formatted_prompt.c_str(),
-                                  (int)formatted_prompt.size(),
-                                  tokens.data(), (int)tokens.size(), true, true);
+                              (int)formatted_prompt.size(),
+                              tokens.data(), (int)tokens.size(),
+                              true,
+                              true);
     tokens.resize(n_tokens);
 
     llama_batch batch = llama_batch_init(4096, 0, 1);
+
+    if (n_tokens > 4096) {
+        n_tokens = 4096;
+        tokens.resize(n_tokens);
+    }
+
     for (int i = 0; i < n_tokens; i++)
         llama_batch_add(batch, tokens[i], i, {0}, (i == n_tokens - 1));
 
@@ -114,7 +126,7 @@ void RunLlama(ChatHistory& history, const CharacterConfig& character) {
         if (llama_vocab_is_eog(vocab, next) || next == llama_vocab_eos(vocab)) break;
 
         char buf[256];
-        int len = llama_token_to_piece(vocab, next, buf, sizeof(buf), 0, true);
+        int len = llama_token_to_piece(vocab, next, buf, sizeof(buf), 0, false);
         if (len > 0) result.append(buf, len);
 
         batch.n_tokens = 0;

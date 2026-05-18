@@ -46,6 +46,7 @@ int main() {
     ImGui_ImplOpenGL3_Init("#version 150");
 
     ApplyTheme(settings.theme);
+    LoadAppFont(settings.font_size);
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontDefault();
 
@@ -56,6 +57,8 @@ int main() {
     std::string current_date = GetTodayDate();
     LoadAllHistory(history);
 
+    size_t today_start = history.size();
+
     bool running = true;
 
     while (running) {
@@ -65,6 +68,7 @@ int main() {
         std::string today = GetTodayDate();
         if (today != current_date) {
             current_date = today;
+            today_start = history.size();
             CleanOldLogs();
         }
 
@@ -82,7 +86,9 @@ int main() {
         if (DrawUI(w, h, history, character, prompt)) {
             history.push_back({"user", prompt});
             RunLlama(history, character);
-            SaveHistory(history, GetTodayFilename());
+
+            ChatHistory today_only(history.begin() + today_start, history.end());
+            SaveHistory(today_only, GetTodayFilename());
         }
 
         ImGui::Render();

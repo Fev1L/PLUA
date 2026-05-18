@@ -48,6 +48,14 @@ std::string ConfigPath(const std::string& filename) {
     return (GetAppDir() / "config" / filename).string();
 }
 
+std::string FontPath(const std::string& filename) {
+    return (GetAppDir() / "fonts" / filename).string();
+}
+
+std::string ModelPath(const std::string& filename) {
+    return (GetAppDir() / "models" / filename).string();
+}
+
 static void CreateDefaultCharacter(const fs::path& filepath) {
     json j;
     j["name"]        = "PLUA";

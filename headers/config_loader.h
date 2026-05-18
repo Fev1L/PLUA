@@ -24,6 +24,8 @@ struct SettingsConfig {
     std::string theme   = "dark";
 };
 std::string ConfigPath(const std::string& filename);
+std::string FontPath(const std::string& filename);
+std::string ModelPath(const std::string& filename);
 
 void EnsureConfigDir();
 
