@@ -1,0 +1,94 @@
+name: Build Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure CMake
+        run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Copy runtime DLLs
+        run: |
+          # Копіюємо SDL3.dll поруч з exe
+          cmake --install build --prefix dist --config Release
+          copy build\Release\PLUA.exe dist\
+          copy build\_deps\sdl3-build\Release\SDL3.dll dist\ 2>nul || true
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Create installer
+        run: |
+          # Генеруємо NSIS скрипт
+          $version = "${{ github.ref_name }}"
+          $nsis = @"
+          !define APP_NAME "PLUA"
+          !define APP_VERSION "$version"
+          !define APP_EXE "PLUA.exe"
+
+          Name "`${APP_NAME}"
+          OutFile "PLUA-$version-Windows-Setup.exe"
+          InstallDir "`$PROGRAMFILES64\PLUA"
+          InstallDirRegKey HKLM "Software\PLUA" ""
+          RequestExecutionLevel admin
+
+          Page directory
+          Page instfiles
+
+          Section "Install"
+            SetOutPath "`$INSTDIR"
+            File /r "dist\*.*"
+            CreateShortcut "`$DESKTOP\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            CreateDirectory "`$SMPROGRAMS\PLUA"
+            CreateShortcut "`$SMPROGRAMS\PLUA\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            WriteUninstaller "`$INSTDIR\Uninstall.exe"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\PLUA" \
+              "DisplayName" "PLUA"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\PLUA" \
+              "UninstallString" "`$INSTDIR\Uninstall.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            Delete "`$INSTDIR\*.*"
+            RMDir /r "`$INSTDIR"
+            Delete "`$DESKTOP\PLUA.lnk"
+            RMDir /r "`$SMPROGRAMS\PLUA"
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\PLUA"
+          SectionEnd
+          "@
+          $nsis | Out-File -Encoding ASCII installer.nsi
+          makensis installer.nsi
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PLUA-Windows
+          path: PLUA-*-Windows-Setup.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PLUA-*-Windows-Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

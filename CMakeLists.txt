@@ -1,11 +1,13 @@
-set(CMAKE_C_COMPILER /usr/bin/clang)
-set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-set(CMAKE_OBJC_COMPILER /usr/bin/clang)
-enable_language(OBJC)
-
 cmake_minimum_required(VERSION 3.23)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(APPLE)
+    set(CMAKE_C_COMPILER /usr/bin/clang)
+    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+    set(CMAKE_OBJC_COMPILER /usr/bin/clang)
+    enable_language(OBJC)
+endif()
 
 project(PLUA)
 
@@ -61,15 +63,7 @@ endif()
 
 # =============== ADD EXECUTABLE ===============
 if(APPLE)
-    add_executable(PLUA MACOSX_BUNDLE
-            ${SOURCE_FILES}
-            ${APP_ICON}
-            src/main.cpp
-            src/chat_history.cpp
-            src/load_config.cpp
-            src/llama_backend.cpp
-            src/ui.cpp
-    )
+    add_executable(PLUA MACOSX_BUNDLE ${SOURCE_FILES} ${APP_ICON})
     set_target_properties(PLUA PROPERTIES
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.fev1L.plua"
             MACOSX_BUNDLE_BUNDLE_NAME    "PLUA"
@@ -77,15 +71,7 @@ if(APPLE)
             MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
     )
 elseif(WIN32)
-    add_executable(PLUA WIN32
-            ${SOURCE_FILES}
-            ${CMAKE_BINARY_DIR}/icon.rc
-            src/main.cpp
-            src/chat_history.cpp
-            src/load_config.cpp
-            src/llama_backend.cpp
-            src/ui.cpp
-    )
+    add_executable(PLUA WIN32 ${SOURCE_FILES} ${CMAKE_BINARY_DIR}/icon.rc)
 else()
     add_executable(PLUA ${SOURCE_FILES})
 endif()
@@ -117,22 +103,5 @@ else()
             ${CMAKE_SOURCE_DIR}/fonts
             $<TARGET_FILE_DIR:PLUA>/fonts
             COMMENT "Copying fonts"
-    )
-endif()
-
-# =============== COPY MODELS ===============
-if(APPLE)
-    add_custom_command(TARGET PLUA POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/models
-            $<TARGET_BUNDLE_CONTENT_DIR:PLUA>/Resources/models
-            COMMENT "Copying models"
-    )
-else()
-    add_custom_command(TARGET PLUA POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/models
-            $<TARGET_FILE_DIR:PLUA>/models
-            COMMENT "Copying models"
     )
 endif()
