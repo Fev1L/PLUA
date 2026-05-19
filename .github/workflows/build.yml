@@ -22,10 +22,22 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install create-dmg
+      - name: Cache CMake deps (SDL3, ImGui)
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: macos-deps-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: macos-deps-
+
+      - name: Cache llama.cpp build
+        uses: actions/cache@v4
+        with:
+          path: build/third_party/llama.cpp
+          key: macos-llama-${{ hashFiles('third_party/llama.cpp/CMakeLists.txt') }}
+          restore-keys: macos-llama-
+
+      - name: Install tools
+        run: brew install create-dmg
 
       - name: Configure CMake
         run: |
@@ -35,13 +47,13 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 1
 
       - name: Create DMG
         run: |
           mkdir -p dist
-
-          find build -name "PLUA.app" -type d 2>/dev/null || true
+          APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
+          echo "App found at: $APP_PATH"
 
           create-dmg \
             --volname "PLUA" \
@@ -53,9 +65,9 @@ jobs:
             --hide-extension "PLUA.app" \
             --app-drop-link 425 190 \
             "dist/PLUA-${{ github.ref_name }}-macOS.dmg" \
-            "build/PLUA.app" || \
+            "$APP_PATH" || \
           hdiutil create -volname "PLUA" \
-            -srcfolder build/PLUA.app \
+            -srcfolder "$APP_PATH" \
             -ov -format UDZO \
             "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
 
@@ -84,6 +96,20 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache CMake deps (SDL3, ImGui)
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: windows-deps-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: windows-deps-
+
+      - name: Cache llama.cpp build
+        uses: actions/cache@v4
+        with:
+          path: build/third_party/llama.cpp
+          key: windows-llama-${{ hashFiles('third_party/llama.cpp/CMakeLists.txt') }}
+          restore-keys: windows-llama-
+
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
 
@@ -95,25 +121,28 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 1
 
       - name: Collect artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
 
-          Copy-Item "build\Release\PLUA.exe" "dist\" -ErrorAction SilentlyContinue
-          Copy-Item "build\PLUA.exe" "dist\" -ErrorAction SilentlyContinue
+          $exe = Get-ChildItem -Path "build" -Filter "PLUA.exe" -Recurse | Select-Object -First 1
+          if ($exe) {
+            Copy-Item $exe.FullName "dist\"
+            Write-Host "exe: $($exe.FullName)"
+          } else { Write-Error "PLUA.exe not found!" }
 
-          $sdlDll = Get-ChildItem -Path "build" -Filter "SDL3.dll" -Recurse | Select-Object -First 1
-          if ($sdlDll) { Copy-Item $sdlDll.FullName "dist\" }
+          $sdl = Get-ChildItem -Path "build" -Filter "SDL3.dll" -Recurse | Select-Object -First 1
+          if ($sdl) { Copy-Item $sdl.FullName "dist\"; Write-Host "SDL3.dll: $($sdl.FullName)" }
 
-          if (Test-Path "fonts")  { Copy-Item "fonts"  "dist\" -Recurse }
-          if (Test-Path "config") { Copy-Item "config" "dist\" -Recurse }
+          if (Test-Path "fonts")  { Copy-Item "fonts"  "dist\" -Recurse -Force }
+          if (Test-Path "config") { Copy-Item "config" "dist\" -Recurse -Force }
 
           New-Item -ItemType Directory -Force -Path "dist\models"
 
-          Write-Host "dist contents:"
+          Write-Host "--- dist ---"
           Get-ChildItem "dist" -Recurse
 
       - name: Install NSIS
@@ -127,8 +156,6 @@ jobs:
           Unicode true
           !define APP_NAME "PLUA"
           !define APP_VERSION "$version"
-          !define APP_EXE "PLUA.exe"
-          !define APP_ICON "..\assets\icon.ico"
 
           Name "`${APP_NAME} `${APP_VERSION}"
           OutFile "PLUA-$version-Windows-Setup.exe"
@@ -146,9 +173,9 @@ jobs:
           Section "Install"
             SetOutPath "`$INSTDIR"
             File /r "dist\*.*"
-            CreateShortcut "`$DESKTOP\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            CreateShortcut "`$DESKTOP\PLUA.lnk" "`$INSTDIR\PLUA.exe"
             CreateDirectory "`$SMPROGRAMS\PLUA"
-            CreateShortcut "`$SMPROGRAMS\PLUA\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            CreateShortcut "`$SMPROGRAMS\PLUA\PLUA.lnk" "`$INSTDIR\PLUA.exe"
             WriteUninstaller "`$INSTDIR\Uninstall.exe"
           SectionEnd
 
