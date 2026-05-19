@@ -13,8 +13,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
+
+      - name: Clone llama.cpp
+        run: |
+          git clone --depth=1 https://github.com/ggerganov/llama.cpp.git third_party/llama.cpp
 
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
