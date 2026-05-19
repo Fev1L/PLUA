@@ -1,0 +1,176 @@
+name: Build PLUA
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+
+  # ─────────────────────────────────────────
+  #  macOS (Apple Silicon)
+  # ─────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install create-dmg
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist
+
+          find build -name "PLUA.app" -type d 2>/dev/null || true
+
+          create-dmg \
+            --volname "PLUA" \
+            --volicon "assets/icon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "PLUA.app" 175 190 \
+            --hide-extension "PLUA.app" \
+            --app-drop-link 425 190 \
+            "dist/PLUA-${{ github.ref_name }}-macOS.dmg" \
+            "build/PLUA.app" || \
+          hdiutil create -volname "PLUA" \
+            -srcfolder build/PLUA.app \
+            -ov -format UDZO \
+            "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PLUA-macOS
+          path: dist/PLUA-*.dmg
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PLUA-*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────
+  #  Windows (x64, MSVC)
+  # ─────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure CMake
+        run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+
+          Copy-Item "build\Release\PLUA.exe" "dist\" -ErrorAction SilentlyContinue
+          Copy-Item "build\PLUA.exe" "dist\" -ErrorAction SilentlyContinue
+
+          $sdlDll = Get-ChildItem -Path "build" -Filter "SDL3.dll" -Recurse | Select-Object -First 1
+          if ($sdlDll) { Copy-Item $sdlDll.FullName "dist\" }
+
+          if (Test-Path "fonts")  { Copy-Item "fonts"  "dist\" -Recurse }
+          if (Test-Path "config") { Copy-Item "config" "dist\" -Recurse }
+
+          New-Item -ItemType Directory -Force -Path "dist\models"
+
+          Write-Host "dist contents:"
+          Get-ChildItem "dist" -Recurse
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Create installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $nsis = @"
+          Unicode true
+          !define APP_NAME "PLUA"
+          !define APP_VERSION "$version"
+          !define APP_EXE "PLUA.exe"
+          !define APP_ICON "..\assets\icon.ico"
+
+          Name "`${APP_NAME} `${APP_VERSION}"
+          OutFile "PLUA-$version-Windows-Setup.exe"
+          InstallDir "`$PROGRAMFILES64\PLUA"
+          RequestExecutionLevel admin
+          SetCompressor /SOLID lzma
+
+          !include "MUI2.nsh"
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_UNPAGE_CONFIRM
+          !insertmacro MUI_UNPAGE_INSTFILES
+          !insertmacro MUI_LANGUAGE "English"
+
+          Section "Install"
+            SetOutPath "`$INSTDIR"
+            File /r "dist\*.*"
+            CreateShortcut "`$DESKTOP\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            CreateDirectory "`$SMPROGRAMS\PLUA"
+            CreateShortcut "`$SMPROGRAMS\PLUA\PLUA.lnk" "`$INSTDIR\`${APP_EXE}"
+            WriteUninstaller "`$INSTDIR\Uninstall.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            Delete "`$INSTDIR\*.*"
+            RMDir /r "`$INSTDIR"
+            Delete "`$DESKTOP\PLUA.lnk"
+            RMDir /r "`$SMPROGRAMS\PLUA"
+          SectionEnd
+          "@
+          $nsis | Out-File -Encoding ASCII installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PLUA-Windows
+          path: PLUA-*-Windows-Setup.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PLUA-*-Windows-Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
