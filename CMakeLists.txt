@@ -59,6 +59,11 @@ elseif(WIN32)
             ${CMAKE_SOURCE_DIR}/assets/icon.rc.in
             ${CMAKE_BINARY_DIR}/icon.rc
     )
+    configure_file(
+            ${CMAKE_SOURCE_DIR}/assets/icon.ico
+            ${CMAKE_BINARY_DIR}/icon.ico
+            COPYONLY
+    )
 endif()
 
 # =============== ADD EXECUTABLE ===============

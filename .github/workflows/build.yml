@@ -76,10 +76,14 @@ jobs:
           APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
           MACOS_DIR="$APP_PATH/Contents/MacOS"
           BINARY="$MACOS_DIR/PLUA"
-          echo "App: $APP_PATH"
 
           find build/bin -name "*.dylib" | while read LIB; do
             echo "Copying: $(basename $LIB)"
+            cp -f "$LIB" "$MACOS_DIR/"
+          done
+
+          find build/_deps -name "libSDL3*.dylib" | while read LIB; do
+            echo "Copying SDL3: $(basename $LIB)"
             cp -f "$LIB" "$MACOS_DIR/"
           done
 
