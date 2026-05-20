@@ -82,13 +82,24 @@ else()
 endif()
 
 # =============== LINK ===============
-target_link_libraries(PLUA PRIVATE
-        SDL3::SDL3
-        imgui_lib
-        OpenGL::GL
-        sqlite3
-        llama
-)
+if(WIN32)
+    target_link_libraries(PLUA PRIVATE
+            SDL3::SDL3main
+            SDL3::SDL3
+            imgui_lib
+            OpenGL::GL
+            sqlite3
+            llama
+    )
+else()
+    target_link_libraries(PLUA PRIVATE
+            SDL3::SDL3
+            imgui_lib
+            OpenGL::GL
+            sqlite3
+            llama
+    )
+endif()
 target_include_directories(PLUA PRIVATE
         third_party/json
         third_party/llama.cpp/include

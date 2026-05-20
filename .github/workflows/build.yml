@@ -49,28 +49,6 @@ jobs:
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 1
 
-      - name: Create DMG
-        run: |
-          mkdir -p dist
-          APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
-          echo "App found at: $APP_PATH"
-
-          create-dmg \
-            --volname "PLUA" \
-            --volicon "assets/icon.icns" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "PLUA.app" 175 190 \
-            --hide-extension "PLUA.app" \
-            --app-drop-link 425 190 \
-            "dist/PLUA-${{ github.ref_name }}-macOS.dmg" \
-            "$APP_PATH" || \
-          hdiutil create -volname "PLUA" \
-            -srcfolder "$APP_PATH" \
-            -ov -format UDZO \
-            "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
-
       - name: Bundle dylibs into app
         run: |
           APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
@@ -108,6 +86,28 @@ jobs:
           ls -la "$MACOS_DIR"
           echo "--- otool PLUA ---"
           otool -L "$BINARY"
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist
+          APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
+          echo "App found at: $APP_PATH"
+
+          create-dmg \
+            --volname "PLUA" \
+            --volicon "assets/icon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "PLUA.app" 175 190 \
+            --hide-extension "PLUA.app" \
+            --app-drop-link 425 190 \
+            "dist/PLUA-${{ github.ref_name }}-macOS.dmg" \
+            "$APP_PATH" || \
+          hdiutil create -volname "PLUA" \
+            -srcfolder "$APP_PATH" \
+            -ov -format UDZO \
+            "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
