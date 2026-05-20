@@ -71,23 +71,38 @@ jobs:
             -ov -format UDZO \
             "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
 
-      - name: Fix dylib rpath
+      - name: Bundle dylibs into app
         run: |
           APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
-          BINARY="$APP_PATH/Contents/MacOS/PLUA"
-          LLAMA_LIB=$(find build -name "libllama*.dylib" | head -1)
-      
-          echo "Binary: $BINARY"
-          echo "llama lib: $LLAMA_LIB"
-      
-          cp "$LLAMA_LIB" "$APP_PATH/Contents/MacOS/"
-      
-          LIB_NAME=$(basename "$LLAMA_LIB")
-          install_name_tool -change \
-            "$LLAMA_LIB" \
-            "@executable_path/$LIB_NAME" \
-            "$BINARY"
-      
+          MACOS_DIR="$APP_PATH/Contents/MacOS"
+          BINARY="$MACOS_DIR/PLUA"
+          echo "App: $APP_PATH"
+
+          find build/bin -name "*.dylib" | while read LIB; do
+            echo "Copying: $(basename $LIB)"
+            cp -f "$LIB" "$MACOS_DIR/"
+          done
+
+          fix_rpath() {
+            local FILE="$1"
+            echo "Fixing: $FILE"
+            otool -L "$FILE" | grep '@rpath' | awk '{print $1}' | while read DEP; do
+              LIB_NAME=$(basename "$DEP")
+              install_name_tool -change "$DEP" "@executable_path/$LIB_NAME" "$FILE" 2>/dev/null || true
+            done
+          }
+
+          fix_rpath "$BINARY"
+
+          for LIB in "$MACOS_DIR"/*.dylib; do
+            fix_rpath "$LIB"
+            LIB_NAME=$(basename "$LIB")
+            install_name_tool -id "@executable_path/$LIB_NAME" "$LIB" 2>/dev/null || true
+          done
+
+          echo "--- MacOS dir ---"
+          ls -la "$MACOS_DIR"
+          echo "--- otool PLUA ---"
           otool -L "$BINARY"
 
       - name: Upload artifact
