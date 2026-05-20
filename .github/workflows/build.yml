@@ -71,17 +71,6 @@ jobs:
           APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
           echo "App found at: $APP_PATH"
 
-          create-dmg \
-            --volname "PLUA" \
-            --volicon "assets/icon.icns" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "PLUA.app" 175 190 \
-            --hide-extension "PLUA.app" \
-            --app-drop-link 425 190 \
-            "dist/PLUA-${{ github.ref_name }}-macOS.dmg" \
-            "$APP_PATH" || \
           hdiutil create -volname "PLUA" \
             -srcfolder "$APP_PATH" \
             -ov -format UDZO \
@@ -152,6 +141,9 @@ jobs:
 
           $sdl = Get-ChildItem -Path "build" -Filter "SDL3.dll" -Recurse | Select-Object -First 1
           if ($sdl) { Copy-Item $sdl.FullName "dist\"; Write-Host "SDL3.dll: $($sdl.FullName)" }
+          
+          $llama = Get-ChildItem -Path "build" -Filter "llama.dll" -Recurse | Select-Object -First 1
+          if ($llama) { Copy-Item $llama.FullName "dist\"; Write-Host "llama.dll: $($llama.FullName)" }
 
           if (Test-Path "fonts")  { Copy-Item "fonts"  "dist\" -Recurse -Force }
           if (Test-Path "config") { Copy-Item "config" "dist\" -Recurse -Force }
