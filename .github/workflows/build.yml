@@ -65,28 +65,6 @@ jobs:
             cp -f "$LIB" "$MACOS_DIR/"
           done
 
-          fix_rpath() {
-            local FILE="$1"
-            echo "Fixing: $FILE"
-            otool -L "$FILE" | grep '@rpath' | awk '{print $1}' | while read DEP; do
-              LIB_NAME=$(basename "$DEP")
-              install_name_tool -change "$DEP" "@executable_path/$LIB_NAME" "$FILE" 2>/dev/null || true
-            done
-          }
-
-          fix_rpath "$BINARY"
-
-          for LIB in "$MACOS_DIR"/*.dylib; do
-            fix_rpath "$LIB"
-            LIB_NAME=$(basename "$LIB")
-            install_name_tool -id "@executable_path/$LIB_NAME" "$LIB" 2>/dev/null || true
-          done
-
-          echo "--- MacOS dir ---"
-          ls -la "$MACOS_DIR"
-          echo "--- otool PLUA ---"
-          otool -L "$BINARY"
-
       - name: Create DMG
         run: |
           mkdir -p dist

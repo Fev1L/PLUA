@@ -3,6 +3,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
+    set(CMAKE_MACOSX_RPATH 1)
+    set(CMAKE_INSTALL_RPATH "@executable_path")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-headerpad_max_install_names")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-headerpad_max_install_names")
+endif()
+
+if(APPLE)
     set(CMAKE_C_COMPILER /usr/bin/clang)
     set(CMAKE_CXX_COMPILER /usr/bin/clang++)
     set(CMAKE_OBJC_COMPILER /usr/bin/clang)
@@ -70,9 +79,10 @@ endif()
 if(APPLE)
     add_executable(PLUA MACOSX_BUNDLE ${SOURCE_FILES} ${APP_ICON})
     set_target_properties(PLUA PROPERTIES
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.fev1L.plua"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.fevil.plua"
             MACOSX_BUNDLE_BUNDLE_NAME    "PLUA"
             MACOSX_BUNDLE_ICON_FILE      "icon.icns"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
             MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
     )
 elseif(WIN32)
@@ -82,28 +92,22 @@ else()
 endif()
 
 # =============== LINK ===============
-if(WIN32)
-    target_link_libraries(PLUA PRIVATE
-            SDL3::SDL3main
-            SDL3::SDL3
-            imgui_lib
-            OpenGL::GL
-            sqlite3
-            llama
-    )
-else()
-    target_link_libraries(PLUA PRIVATE
-            SDL3::SDL3
-            imgui_lib
-            OpenGL::GL
-            sqlite3
-            llama
-    )
-endif()
+target_link_libraries(PLUA PRIVATE
+        SDL3::SDL3
+        imgui_lib
+        OpenGL::GL
+        sqlite3
+        llama
+)
 target_include_directories(PLUA PRIVATE
         third_party/json
         third_party/llama.cpp/include
 )
+
+# ======= WINDOWS LINKER =======
+if(WIN32)
+    target_link_options(PLUA PRIVATE "/ENTRY:mainCRTStartup")
+endif()
 
 # =============== COPY FONTS ===============
 if(APPLE)
@@ -119,22 +123,5 @@ else()
             ${CMAKE_SOURCE_DIR}/fonts
             $<TARGET_FILE_DIR:PLUA>/fonts
             COMMENT "Copying fonts"
-    )
-endif()
-
-# =============== COPY LLAMA DYLIB (macOS) ===============
-if(APPLE)
-    add_custom_command(TARGET PLUA POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:llama>
-            $<TARGET_BUNDLE_CONTENT_DIR:PLUA>/MacOS/
-            COMMENT "Copying libllama into bundle"
-    )
-    add_custom_command(TARGET PLUA POST_BUILD
-            COMMAND install_name_tool -change
-            $<TARGET_SONAME_FILE_NAME:llama>
-            @executable_path/$<TARGET_SONAME_FILE_NAME:llama>
-            $<TARGET_FILE:PLUA>
-            COMMENT "Fixing rpath for libllama"
     )
 endif()
