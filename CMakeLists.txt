@@ -105,3 +105,20 @@ else()
             COMMENT "Copying fonts"
     )
 endif()
+
+# =============== COPY LLAMA DYLIB (macOS) ===============
+if(APPLE)
+    add_custom_command(TARGET PLUA POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:llama>
+            $<TARGET_BUNDLE_CONTENT_DIR:PLUA>/MacOS/
+            COMMENT "Copying libllama into bundle"
+    )
+    add_custom_command(TARGET PLUA POST_BUILD
+            COMMAND install_name_tool -change
+            $<TARGET_SONAME_FILE_NAME:llama>
+            @executable_path/$<TARGET_SONAME_FILE_NAME:llama>
+            $<TARGET_FILE:PLUA>
+            COMMENT "Fixing rpath for libllama"
+    )
+endif()

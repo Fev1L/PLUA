@@ -71,6 +71,25 @@ jobs:
             -ov -format UDZO \
             "dist/PLUA-${{ github.ref_name }}-macOS.dmg"
 
+      - name: Fix dylib rpath
+        run: |
+          APP_PATH=$(find build -name "PLUA.app" -type d | head -1)
+          BINARY="$APP_PATH/Contents/MacOS/PLUA"
+          LLAMA_LIB=$(find build -name "libllama*.dylib" | head -1)
+      
+          echo "Binary: $BINARY"
+          echo "llama lib: $LLAMA_LIB"
+      
+          cp "$LLAMA_LIB" "$APP_PATH/Contents/MacOS/"
+      
+          LIB_NAME=$(basename "$LLAMA_LIB")
+          install_name_tool -change \
+            "$LLAMA_LIB" \
+            "@executable_path/$LIB_NAME" \
+            "$BINARY"
+      
+          otool -L "$BINARY"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
