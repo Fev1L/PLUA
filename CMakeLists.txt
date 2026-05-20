@@ -109,6 +109,20 @@ if(WIN32)
     target_link_options(PLUA PRIVATE "/ENTRY:mainCRTStartup")
 endif()
 
+# ======= macOS Dynamic Libraries RPATH =======
+if(APPLE)
+    set_target_properties(llama PROPERTIES
+            BUILD_WITH_INSTALL_RPATH TRUE
+            INSTALL_RPATH "@executable_path"
+    )
+    if(TARGET ggml)
+        set_target_properties(ggml PROPERTIES
+                BUILD_WITH_INSTALL_RPATH TRUE
+                INSTALL_RPATH "@executable_path"
+        )
+    endif()
+endif()
+
 # =============== COPY FONTS ===============
 if(APPLE)
     add_custom_command(TARGET PLUA POST_BUILD

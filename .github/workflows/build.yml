@@ -132,24 +132,27 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-
+          
           $exe = Get-ChildItem -Path "build" -Filter "PLUA.exe" -Recurse | Select-Object -First 1
           if ($exe) {
             Copy-Item $exe.FullName "dist\"
             Write-Host "exe: $($exe.FullName)"
           } else { Write-Error "PLUA.exe not found!" }
-
-          $sdl = Get-ChildItem -Path "build" -Filter "SDL3.dll" -Recurse | Select-Object -First 1
-          if ($sdl) { Copy-Item $sdl.FullName "dist\"; Write-Host "SDL3.dll: $($sdl.FullName)" }
           
-          $llama = Get-ChildItem -Path "build" -Filter "llama.dll" -Recurse | Select-Object -First 1
-          if ($llama) { Copy-Item $llama.FullName "dist\"; Write-Host "llama.dll: $($llama.FullName)" }
-
+          Get-ChildItem -Path "build\bin" -Filter "*.dll" -Recurse | ForEach-Object {
+            Copy-Item $_.FullName "dist\"
+            Write-Host "Copied DLL: $($_.Name)"
+          }
+          Get-ChildItem -Path "build\_deps" -Filter "libSDL3*.dll" -Recurse | ForEach-Object {
+            Copy-Item $_.FullName "dist\"
+            Write-Host "Copied SDL3 DLL: $($_.Name)"
+          }
+          
           if (Test-Path "fonts")  { Copy-Item "fonts"  "dist\" -Recurse -Force }
           if (Test-Path "config") { Copy-Item "config" "dist\" -Recurse -Force }
-
+          
           New-Item -ItemType Directory -Force -Path "dist\models"
-
+          
           Write-Host "--- dist ---"
           Get-ChildItem "dist" -Recurse
 
